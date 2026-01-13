@@ -1,6 +1,5 @@
 import rospy
 from sensor_msgs.msg import Image
-from std_msgs.msg import Bool
 from cv_bridge import CvBridge
 import cv2
 import os
@@ -11,7 +10,6 @@ class SaveImages:
         rospy.init_node('image_subscriber', anonymous=True)
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber('/oak/rgb/image_raw', Image, self.image_callback)
-        self.obstacle_sub = rospy.Subscriber('/obstacle_detector/obstacle_detected', Bool, self.obstacle_callback)
         
         # Folder to save images
         self.save_dir = "beds_without_obstacles"
@@ -31,8 +29,8 @@ class SaveImages:
             filename = os.path.join(self.save_dir, f"image_{timestamp}.jpg")
 
             # Save the image
-            # cv2.imwrite(filename, cv_image)
-            # rospy.loginfo(f"Saved: {filename}")
+            cv2.imwrite(filename, cv_image)
+            rospy.loginfo(f"Saved: {filename}")
 
         except Exception as e:
             rospy.logerr(f"Error converting or saving image: {e}")
