@@ -4,6 +4,8 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+
+import numpy as np
 import matplotlib.pyplot as plt
 
 # Hyperparameters
@@ -16,8 +18,8 @@ noise_factor = 0.1
 alpha = 0.8  # weight for MSE
 beta = 0.2   # weight for SSIM
 
-# Autoencoder Definition
 
+# Autoencoder Definition
 class ConvAutoencoder(nn.Module):
     def __init__(self):
         super(ConvAutoencoder, self).__init__()
@@ -69,7 +71,6 @@ def ssim_loss(x, y, C1=0.01**2, C2=0.03**2):
 
 
 # Data Preparation
-
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor()
@@ -82,7 +83,6 @@ loader = DataLoader(dataset, batch_size, shuffle=True)
 
 
 # Training
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = ConvAutoencoder().to(device)
 mse = nn.MSELoss()
@@ -105,8 +105,21 @@ torch.save(model.state_dict(), 'autoencoder_obstacle.pth')
 print("Autoencoder trained and saved.")
 
 
-# Inference (Detect Anomalies)
+# Determine threshold from training data
+errors = []
+model.eval()
+with torch.no_grad():
+    for imgs, _ in loader:
+        imgs = imgs.to(device)
+        recon = model(imgs)
+        err = torch.mean((imgs - recon) ** 2, dim=(1,2,3)).cpu().numpy()
+        errors.extend(err)
 
+threshold = np.percentile(errors, 99)  # 99th percentile
+print("Threshold:", threshold)
+
+
+# Inference (Detect Anomalies)
 def anomaly_score(img):
     with torch.no_grad():
         img = img.unsqueeze(0).to(device)
@@ -114,6 +127,4 @@ def anomaly_score(img):
         error = torch.mean((img - recon) ** 2).item()
     return error
 
-# Threshold
-threshold = 0.01
 # If error > threshold → obstacle detected
